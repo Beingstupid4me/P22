@@ -1,0 +1,113 @@
+# ============================================================
+# Network Routing RL — Realistic Asymmetric Fabric Scenario
+#
+# Purpose:
+#   Train/evaluate on a less idealized fabric where ECMP's blind
+#   equal splitting becomes suboptimal.
+#
+# Realism knobs enabled here:
+#   - static per-link capacity / delay / buffer skew
+#   - per-spine structural capacity bias
+#   - runtime brownouts and hard port failures
+#   - sparse subgroup collectives (V3 curriculum)
+# ============================================================
+
+topology:
+  num_leaves: 16
+  num_spines: 4
+  link_capacity_mbps: 400000.0
+  propagation_delay_ms: 0.005
+  buffer_size_mb: 200.0
+  edge_buffer_capacity_mb: 50000.0    # ~6.25 GB per leaf edge buffer
+
+  # Static per-episode asymmetry
+  static_capacity_variance: 0.12      # ±12% random per-link capacity skew
+  static_delay_variance: 0.25         # ±25% propagation skew
+  static_buffer_variance: 0.15        # ±15% buffer skew
+  spine_capacity_variance: 0.18       # some spines are structurally stronger/weaker
+
+  # Dynamic link events (sampled every episode)
+  enable_link_events: true
+  link_event_probability: 1.00
+  max_dynamic_events: 2
+  event_start_min: 60
+  event_start_max: 280
+  event_duration_min: 40
+  event_duration_max: 120
+  brownout_probability: 0.70
+  hard_failure_probability: 0.30
+  brownout_capacity_min: 0.15
+  brownout_capacity_max: 0.50
+  bidirectional_link_events: true
+
+traffic:
+  elephant_flow_bandwidth_mbps: 320000.0
+  elephant_burst_size: 7
+  elephant_burst_interval: 5
+  elephant_flow_duration: 100
+  elephant_data_mb: 75000.0
+  hosts_per_rack: 8
+
+  mice_flow_bandwidth_mbps: 1000.0
+  mice_flow_rate: 0.02
+  mice_flow_duration: 80
+
+  allreduce_probability: 0.30
+  alltoall_probability: 0.35
+  ring_probability: 0.35
+
+  bandwidth_variance: 0.05
+  min_burst_participants: 4
+  max_burst_participants: 7
+  subgroup_locality_probability: 0.75
+  subgroup_window: 8
+  intent_lookahead: 2
+
+tcp:
+  initial_cwnd_fraction: 0.1
+  ss_growth_factor: 2.0
+  ai_increment: 0.05
+  md_factor: 0.5
+  ecn_marking_threshold: 0.3
+  drop_threshold: 0.95
+  retransmit_penalty: 1.0
+  fast_recovery_exit: 0.7
+  min_rate_fraction: 0.01
+
+environment:
+  max_steps: 500
+  observation_history: 1
+  step_duration_seconds: 0.1
+  reward:
+    # V4: Pure FCT pressure — reward = -num_active_flows
+    use_legacy_reward: false
+    flow_penalty_weight: -1.0
+    max_expected_flows: 100.0
+    # Legacy V3 weights (only used when use_legacy_reward: true)
+    throughput_weight: 3.0
+    drop_weight: -5.0
+    hotspot_weight: -1.0
+    hotspot_threshold: 0.90
+
+training:
+  total_timesteps: 2000000
+  policy_type: gnn
+  learning_rate: 0.0001
+  n_steps: 2048
+  batch_size: 128
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.001
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  n_epochs: 4
+  target_kl: 0.02
+  gcn_hidden: 64
+  gcn_layers: 2
+  features_dim: 128
+  log_std_init: -1.0
+
+benchmarking:
+  num_episodes: 30
+  seed: 42

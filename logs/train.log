@@ -1,0 +1,109 @@
+2026-03-05 06:30:40,134 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-05 06:30:40,135 [INFO] train: Observation dim: 1344, Action dim: 64
+2026-03-05 06:30:40,135 [INFO] train: Starting PPO training for 10,000 timesteps…
+2026-03-05 06:34:35,907 [INFO] train: Training complete. Model saved to trained_models\ppo_routing_final
+2026-03-05 10:43:20,303 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-05 10:43:20,304 [INFO] train: Observation dim: 1344, Action dim: 64
+2026-03-05 10:43:20,304 [INFO] train: Starting PPO training for 2,000,000 timesteps…
+2026-03-05 21:43:51,416 [INFO] train: Training complete. Model saved to trained_models\ppo_routing_final
+2026-03-06 15:41:18,474 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-06 15:41:18,475 [INFO] train: Observation dim: 1336, Action dim: 64
+2026-03-06 15:41:18,475 [INFO] train: Policy type: gnn
+2026-03-06 15:41:18,475 [INFO] train: Starting PPO-GNN training for 50,000 timesteps…
+2026-03-06 16:18:09,116 [INFO] train: Training complete. Model saved to trained_models\ppo_gnn_routing_final
+2026-03-06 17:06:30,606 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-06 17:06:30,607 [INFO] train: Observation dim: 1336, Action dim: 64
+2026-03-06 17:06:30,607 [INFO] train: Policy type: gnn
+2026-03-06 17:06:30,608 [INFO] train: Starting PPO-GNN training for 50,000 timesteps…
+2026-03-06 17:38:49,380 [INFO] train: Training complete. Model saved to trained_models\ppo_gnn_routing_final
+2026-03-06 18:30:20,583 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-06 18:30:20,584 [INFO] train: Observation dim: 1336, Action dim: 64
+2026-03-06 18:30:20,584 [INFO] train: Policy type: gnn
+2026-03-06 18:30:20,586 [INFO] train: Starting PPO-GNN training for 200,000 timesteps…
+2026-03-06 20:23:13,978 [INFO] train: Training complete. Model saved to trained_models\ppo_gnn_routing_final
+2026-03-06 23:07:54,519 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-06 23:07:54,519 [INFO] train: Observation dim: 1464, Action dim: 64
+2026-03-06 23:07:54,520 [INFO] train: Policy type: gnn
+2026-03-06 23:07:54,520 [INFO] train: Starting PPO-GNN training for 50,000 timesteps…
+2026-03-06 23:16:33,253 [INFO] train: Training complete. Model saved to trained_models\ppo_gnn_routing_final
+2026-03-06 23:47:09,253 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-06 23:47:09,254 [INFO] train: Observation dim: 2016, Action dim: 64
+2026-03-06 23:47:09,254 [INFO] train: Policy type: gnn
+2026-03-06 23:47:09,255 [INFO] train: Starting PPO-GNN training for 512 timesteps…
+2026-03-06 23:47:09,521 [INFO] train: Training complete. Model saved to trained_models\ppo_gnn_routing_final
+2026-03-06 23:49:50,487 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-06 23:49:50,488 [INFO] train: Observation dim: 2016, Action dim: 64
+2026-03-06 23:49:50,488 [INFO] train: Policy type: gnn
+2026-03-06 23:49:50,488 [INFO] train: Starting PPO-GNN training for 2,048 timesteps…
+2026-03-06 23:50:05,910 [INFO] train: Training complete. Model saved to trained_models\ppo_gnn_routing_final
+2026-03-07 00:00:29,583 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-07 00:00:29,583 [INFO] train: Observation dim: 2016, Action dim: 64
+2026-03-07 00:00:29,584 [INFO] train: Policy type: gnn
+2026-03-07 00:00:29,584 [INFO] train: Starting PPO-GNN training for 512 timesteps…
+2026-03-07 00:00:34,941 [INFO] train: Training complete. Model saved to trained_models\smoke_test\ppo_gnn_routing_final
+2026-03-07 00:23:39,807 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-07 00:23:39,807 [INFO] train: Observation dim: 2016, Action dim: 64
+2026-03-07 00:23:39,807 [INFO] train: Policy type: gnn
+2026-03-07 00:23:39,807 [INFO] train: Starting PPO-GNN training for 50,000 timesteps…
+2026-03-07 00:32:42,029 [INFO] train: Training complete. Model saved to trained_models\ppo_gnn_routing_final
+2026-03-07 03:48:14,709 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-07 03:48:14,710 [INFO] train: Observation dim: 2016, Action dim: 64
+2026-03-07 03:48:14,710 [INFO] train: Policy type: gnn
+2026-03-07 03:48:14,711 [INFO] train: Starting PPO-GNN training for 50,000 timesteps…
+2026-03-07 03:57:19,857 [INFO] train: Training complete. Model saved to trained_models\ppo_gnn_routing_final
+2026-03-07 04:19:58,322 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-07 04:19:58,323 [INFO] train: Observation dim: 2016, Action dim: 64
+2026-03-07 04:19:58,323 [INFO] train: Policy type: gnn
+2026-03-07 04:19:58,323 [INFO] train: Starting PPO-GNN training for 50,000 timesteps…
+2026-03-07 04:29:31,721 [INFO] train: Training complete. Model saved to trained_models\ppo_gnn_routing_final
+2026-03-07 04:45:15,874 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-07 04:45:15,875 [INFO] train: Observation dim: 2016, Action dim: 64
+2026-03-07 04:45:15,875 [INFO] train: Policy type: gnn
+2026-03-07 04:45:15,875 [INFO] train: Starting PPO-GNN training for 50,000 timesteps…
+2026-03-07 04:54:22,553 [INFO] train: Training complete. Model saved to trained_models\ppo_gnn_routing_final
+2026-03-11 05:59:28,794 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-11 05:59:28,795 [INFO] train: Observation dim: 2036, Action dim: 80
+2026-03-11 05:59:28,795 [INFO] train: Policy type: gnn
+2026-03-11 05:59:28,795 [INFO] train: Starting PPO-GNN training for 50,000 timesteps…
+2026-03-11 05:59:55,203 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-11 05:59:55,203 [INFO] train: Observation dim: 2036, Action dim: 80
+2026-03-11 05:59:55,203 [INFO] train: Policy type: gnn
+2026-03-11 05:59:55,204 [INFO] train: Starting PPO-GNN training for 50,000 timesteps…
+2026-03-11 06:16:48,411 [INFO] train: Training complete. Model saved to trained_models\ppo_gnn_routing_final
+2026-03-11 06:23:29,721 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-11 06:23:29,723 [INFO] train: Observation dim: 2036, Action dim: 80
+2026-03-11 06:23:29,723 [INFO] train: Policy type: gnn
+2026-03-11 06:23:29,723 [INFO] train: Starting PPO-GNN training for 5,000 timesteps…
+2026-03-11 06:25:03,472 [INFO] train: Training complete. Model saved to trained_models\test_v4\ppo_gnn_routing_final
+2026-03-11 06:32:07,622 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-11 06:32:07,622 [INFO] train: Observation dim: 2036, Action dim: 80
+2026-03-11 06:32:07,622 [INFO] train: Policy type: gnn
+2026-03-11 06:32:07,624 [INFO] train: Starting PPO-GNN training for 50,000 timesteps…
+2026-03-11 06:37:19,732 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-11 06:37:19,732 [INFO] train: Observation dim: 2036, Action dim: 80
+2026-03-11 06:37:19,732 [INFO] train: Policy type: gnn
+2026-03-11 06:37:19,733 [INFO] train: Starting PPO-GNN training for 50,000 timesteps…
+2026-03-11 06:48:50,872 [INFO] train: Training complete. Model saved to trained_models\v4_50k\ppo_gnn_routing_final
+2026-03-11 08:01:31,825 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-11 08:01:31,825 [INFO] train: Observation dim: 2036, Action dim: 80
+2026-03-11 08:01:31,825 [INFO] train: Policy type: gnn
+2026-03-11 08:01:31,825 [INFO] train: Starting PPO-GNN training for 50,000 timesteps…
+2026-03-11 08:07:41,492 [INFO] train: Training complete. Model saved to trained_models\v4_50k\ppo_gnn_routing_final
+2026-03-11 08:31:34,500 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-11 08:31:34,500 [INFO] train: Observation dim: 2036, Action dim: 80
+2026-03-11 08:31:34,500 [INFO] train: Policy type: gnn
+2026-03-11 08:31:34,501 [INFO] train: Starting PPO-GNN training for 100,000 timesteps…
+2026-03-11 08:32:03,008 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-11 08:32:03,009 [INFO] train: Observation dim: 2036, Action dim: 80
+2026-03-11 08:32:03,009 [INFO] train: Policy type: gnn
+2026-03-11 08:32:03,010 [INFO] train: Starting PPO-GNN training for 200,000 timesteps…
+2026-03-11 08:58:29,259 [INFO] train: Training complete. Model saved to trained_models\v4_200k\ppo_gnn_routing_final
+2026-03-11 09:36:48,869 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-11 09:36:48,870 [INFO] train: Observation dim: 2036, Action dim: 80
+2026-03-11 09:36:48,871 [INFO] train: Policy type: gnn
+2026-03-11 09:36:48,871 [INFO] train: Starting PPO-GNN training for 500,000 timesteps…
+2026-03-11 10:37:26,958 [INFO] train: Training complete. Model saved to trained_models\v4_500k\ppo_gnn_routing_final
+2026-03-11 15:05:09,515 [INFO] train: Environment: 128 links, 16 leaves, 4 spines
+2026-03-11 15:05:09,516 [INFO] train: Observation dim: 2036, Action dim: 80
+2026-03-11 15:05:09,516 [INFO] train: Policy type: gnn
+2026-03-11 15:05:09,516 [INFO] train: Starting PPO-GNN training for 500,000 timesteps…

@@ -1,0 +1,99 @@
+# ============================================================
+# Network Routing RL — V4 Adaptive Conductor
+#
+# V4 changes from V3:
+#   - Edge buffer: per-leaf admission rate controls injection
+#   - Action space: L × (1+S) = admission_rate + spine weights
+#   - Reward: pure -(num_active_flows) for FCT pressure
+#   - New Conductor heuristic agent (Stage B validation)
+#   - Node features: 9 dims (added normalized_backlog)
+# ============================================================
+
+topology:
+  num_leaves: 16
+  num_spines: 4
+  link_capacity_mbps: 400000.0     # 400 Gbps
+  propagation_delay_ms: 0.005      # 5 μs intra-DC
+  buffer_size_mb: 200.0            # 200 Mb (~25 MB) shallow buffers
+  edge_buffer_capacity_mb: 50000.0  # ~6.25 GB per leaf edge buffer (server RAM)
+
+traffic:
+  # Elephant flows (gradient sync)
+  elephant_flow_bandwidth_mbps: 320000.0
+  elephant_burst_size: 7          # Legacy cap for sparse one-to-one patterns
+  elephant_burst_interval: 5
+  elephant_flow_duration: 100
+  elephant_data_mb: 75000.0
+  hosts_per_rack: 8
+
+  # Mice flows (control plane)
+  mice_flow_bandwidth_mbps: 1000.0
+  mice_flow_rate: 0.02
+  mice_flow_duration: 80
+
+  # Pattern probabilities
+  allreduce_probability: 0.30
+  alltoall_probability: 0.35
+  ring_probability: 0.35
+
+  bandwidth_variance: 0.05
+  min_burst_participants: 4
+  max_burst_participants: 7
+  subgroup_locality_probability: 0.75
+  subgroup_window: 8
+
+  # V2/V3: Intent / NCCL hook
+  intent_lookahead: 2              # Announce burst 2 steps early
+
+# TCP Congestion Control
+tcp:
+  initial_cwnd_fraction: 0.1
+  ss_growth_factor: 2.0
+  ai_increment: 0.05
+  md_factor: 0.5
+  ecn_marking_threshold: 0.3
+  drop_threshold: 0.95
+  retransmit_penalty: 1.0
+  fast_recovery_exit: 0.7
+  min_rate_fraction: 0.01
+
+
+environment:
+  max_steps: 500
+  observation_history: 1
+  step_duration_seconds: 0.1
+  reward:
+    # V4: Pure FCT pressure — reward = -(active_flows / max_expected_flows)
+    use_legacy_reward: false
+    flow_penalty_weight: -1.0
+    max_expected_flows: 100.0
+    # Legacy V3 weights (only used when use_legacy_reward: true)
+    throughput_weight: 3.0
+    drop_weight: -5.0
+    hotspot_weight: -1.0
+    hotspot_threshold: 0.90
+
+training:
+  total_timesteps: 2000000
+  policy_type: gnn                 # V2: GNN policy (or "mlp" for V1-style)
+  learning_rate: 0.0001            # V2: lower LR for stable GNN training
+  n_steps: 2048
+  batch_size: 128
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.001                  # V2: much lower entropy (focused exploration)
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  n_epochs: 4                     # Fewer epochs → less clip fraction → healthier gradients
+  target_kl: 0.02                 # KL early stopping threshold (prevents policy over-update)
+
+  # V2: GNN architecture
+  gcn_hidden: 64                   # Hidden dim per GCN layer
+  gcn_layers: 2                    # Number of GCN layers
+  features_dim: 128                # Output feature dimension
+  log_std_init: -1.0               # Initial policy std (exp(-1) ≈ 0.37)
+
+benchmarking:
+  num_episodes: 30
+  seed: 42
