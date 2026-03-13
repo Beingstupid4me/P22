@@ -240,16 +240,19 @@ class NetworkRoutingEnv(gym.Env):
         S = self._num_spines
         raw = action.reshape(self._num_leaves, 1 + S)
 
-        # Admission rate: map [-1, 1] → [0, 1] via linear rescale
-        admission_rates = np.clip((raw[:, 0] + 1.0) / 2.0, 0.0, 1.0)
+        # Admission rate: linear map [-1,1] → [0,1].
+        # Heuristic agents already use this convention (Conductor: 2*rate-1).
+        admission_rates = np.clip((raw[:, 0] + 1.0) * 0.5, 0.01, 1.0)
 
         # Spine weights: per-leaf softmax with temperature
+        # Spine weights: per-leaf softmax with higher temperature
+        # so small action differences create meaningful weight shifts
         spine_raw = raw[:, 1:]  # (L, S)
-        scaled = spine_raw * 3.0
+        scaled = spine_raw * 5.0  # temperature: action=±0.4 → 90/10 split
         shifted = scaled - scaled.max(axis=1, keepdims=True)
         exp_w = np.exp(shifted)
         weights = exp_w / exp_w.sum(axis=1, keepdims=True)
-        weights = weights * 0.9 + 0.1   # ensure min weight
+        weights = weights * 0.99 + 0.01   # min 1% per spine (numerical safety only)
 
         return admission_rates.astype(np.float32), weights
 
@@ -295,7 +298,10 @@ class NetworkRoutingEnv(gym.Env):
         # Link-level features
         ecn_fracs = getattr(state, "link_ecn_fractions", np.zeros_like(state.link_utilizations))
 
-        weight_max = max(state.routing_weights.max(), 1e-8)
+        # Routing weights: compute actual split ratios (rows sum to 1)
+        rw = state.routing_weights  # (L, S) raw weights
+        row_sums = np.maximum(rw.sum(axis=1, keepdims=True), 1e-8)
+        split_ratios = (rw / row_sums).flatten().astype(np.float32)
 
         obs = np.concatenate([
             node_feats[:self._node_feat_size],
@@ -306,7 +312,7 @@ class NetworkRoutingEnv(gym.Env):
             ecn_fracs.astype(np.float32),
             state.link_capacity_ratios.astype(np.float32),
             state.link_up_flags.astype(np.float32),
-            (state.routing_weights.flatten() / weight_max).astype(np.float32),
+            split_ratios,
         ])
         return np.clip(obs, 0.0, 1.0)
 

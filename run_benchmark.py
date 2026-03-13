@@ -35,7 +35,9 @@ def main():
     parser = argparse.ArgumentParser(description="Benchmark routing agents (V2)")
     parser.add_argument("--config", type=str, default="config/default.yaml")
     parser.add_argument("--ppo-model", type=str, default=None,
-                        help="Path to a trained PPO model")
+                        help="Path to a trained PPO model (or comma-separated list)")
+    parser.add_argument("--model-labels", type=str, default=None,
+                        help="Comma-separated labels for PPO models")
     parser.add_argument("--policy", type=str, default="gnn",
                         choices=["gnn", "mlp"],
                         help="Policy type for loaded PPO model")
@@ -83,14 +85,20 @@ def main():
     ]
 
     if args.ppo_model:
-        try:
-            ppo = PPOAgent.load(args.ppo_model, env=env, policy_type=args.policy)
-            ppo.num_leaves = num_leaves
-            ppo.num_spines = num_spines
-            agents.append(ppo)
-            logger.info(f"Loaded PPO-{args.policy.upper()} model from {args.ppo_model}")
-        except Exception as e:
-            logger.warning(f"Could not load PPO model: {e}")
+        model_paths = [p.strip() for p in args.ppo_model.split(",")]
+        labels = ([l.strip() for l in args.model_labels.split(",")]
+                  if args.model_labels else [None] * len(model_paths))
+        for i, mpath in enumerate(model_paths):
+            try:
+                ppo = PPOAgent.load(mpath, env=env, policy_type=args.policy)
+                ppo.num_leaves = num_leaves
+                ppo.num_spines = num_spines
+                if labels[i]:
+                    ppo.name = labels[i]
+                agents.append(ppo)
+                logger.info(f"Loaded PPO model '{ppo.name}' from {mpath}")
+            except Exception as e:
+                logger.warning(f"Could not load PPO model {mpath}: {e}")
 
     # ── Run ─────────────────────────────────────────────
     num_episodes = args.episodes or bench_params.get("num_episodes", 50)

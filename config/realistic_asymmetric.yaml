@@ -79,15 +79,14 @@ environment:
   observation_history: 1
   step_duration_seconds: 0.1
   reward:
-    # V4: Pure FCT pressure — reward = -num_active_flows
-    use_legacy_reward: false
-    flow_penalty_weight: -1.0
+    # V5: Shaped Architect — goodput + drops + FCT pressure + starvation
+    reference_capacity_mbps: 6000000.0    # Achievable goodput (16L×4S)
     max_expected_flows: 100.0
-    # Legacy V3 weights (only used when use_legacy_reward: true)
-    throughput_weight: 3.0
+    drop_denominator_mbps: 20000.0        # Scaled for 16×4
+    goodput_weight: 3.0
     drop_weight: -5.0
-    hotspot_weight: -1.0
-    hotspot_threshold: 0.90
+    flow_penalty_weight: -0.5
+    starvation_penalty: -2.0
 
 training:
   total_timesteps: 2000000

@@ -1,16 +1,13 @@
 """
-Reward function for adaptive routing — V4 Adaptive Conductor.
+Reward function for adaptive routing — V5 The Adaptive Conductor.
 
-V4 reward: normalised Flow Completion Time pressure.
-
-    Reward = -(num_active_flows + edge_drops) / max_expected_flows
-
-Scaled to roughly [-1, 0] so the Critic network sees stable gradients.
-``max_expected_flows`` is a soft normalisation constant (not a hard cap).
+Single focused reward: dense goodput + dense drop penalty + sparse FCT
+pressure + anti-lazy starvation.  Proven by A–G ablation to outperform
+single-objective variants because it gives the critic multiple
+correlated gradient signals on every step.
 """
 
 from dataclasses import dataclass
-
 import numpy as np
 
 from simulator.network import NetworkState
@@ -18,89 +15,77 @@ from simulator.network import NetworkState
 
 @dataclass
 class RewardConfig:
-    """Reward configuration.
+    """V5 reward configuration.
 
-    V4 default: scaled -num_active_flows / max_expected_flows.
-    Set ``use_legacy_reward=True`` to fall back to the V3 weighted sum.
+    All fields can be overridden from YAML under ``environment.reward:``.
     """
 
-    use_legacy_reward: bool = False
+    # Reference capacity for goodput normalisation (Mbps).
+    # Should approximate achievable goodput at typical load, NOT total fabric BW.
+    # Micro-lab (4L×2S): ~800_000, Production (16L×4S): ~6_000_000.
+    reference_capacity_mbps: float = 800_000.0
+    max_expected_flows: float = 20.0
 
-    # V4: scaling factor applied after normalisation (default -1.0)
-    flow_penalty_weight: float = -1.0
+    # Drop normalisation: Mbps of drops that corresponds to a serious
+    # congestion event.  Keeps the penalty visible even when drops are
+    # small relative to total capacity.
+    drop_denominator_mbps: float = 5_000.0
 
-    # V4: soft normaliser — expected peak active flows during an episode.
-    # Reward ≈ flow_penalty_weight × (active / max_expected).  Keeps
-    # reward in roughly [-1, 0] for stable critic training.
-    max_expected_flows: float = 100.0
-
-    # Legacy V3 weights (only used when use_legacy_reward=True)
-    throughput_weight: float = 3.0
+    # Core multipliers (goodput + drops = actionable signal)
+    goodput_weight: float = 3.0
     drop_weight: float = -5.0
-    hotspot_weight: float = -1.0
-    hotspot_threshold: float = 0.90
-    fairness_weight: float = 0.0
+
+    # Auxiliary terms (small, optional — avoid dominating gradient)
+    flow_penalty_weight: float = 0.0     # disabled: flow arrivals are uncontrollable
+    starvation_penalty: float = 0.0      # disabled: goodput reward already penalises idling
 
 
 class RewardCalculator:
-    """Computes a scalar reward from the current network state.
-
-    V4 default: reward = flow_penalty_weight × num_active_flows
-    Legacy:     weighted sum of throughput, drops, hotspot.
-    """
+    """Computes a scalar reward from the current network state."""
 
     def __init__(self, config: RewardConfig):
         self.config = config
 
     def compute(self, state: NetworkState, weight_changed: bool = False) -> float:
-        """Return per-step reward.
-
-        Args:
-            state:          Current network snapshot.
-            weight_changed: Ignored (no flapping penalty).
-        """
         cfg = self.config
 
-        if not cfg.use_legacy_reward:
-            # ── V4: Normalised FCT pressure ─────────────
-            # Reward = weight × (active + edge_drops) / max_expected
-            # Keeps reward in roughly [-1, 0] for stable critic.
-            edge_drops = getattr(state, 'edge_dropped_flows', 0)
-            raw = state.num_active_flows + edge_drops
-            normalised = raw / max(cfg.max_expected_flows, 1.0)
-            return cfg.flow_penalty_weight * normalised
+        # 1. POSITIVE: goodput (data successfully moved)
+        cap = max(cfg.reference_capacity_mbps, 1.0)
+        goodput_norm = state.total_goodput / cap
 
-        # ── Legacy V3 reward ────────────────────────────
-        if state.total_demand > 0:
-            throughput = state.total_throughput / state.total_demand
-            offered_volume_mb = state.total_demand * state.step_duration_s
-            drop_normalizer_mb = max(2.0 * offered_volume_mb, 1e-8)
-            drop_ratio = min(
-                max(state.dropped_traffic, 0.0) / drop_normalizer_mb,
-                1.0,
-            )
-        else:
-            throughput = 1.0
-            drop_ratio = 0.0
+        # 2. DENSE PENALTY: drops (fabric + edge buffer overflows)
+        # Use log-scale so the gradient is visible across the full range
+        # (685K vs 100K vs 5K drops all produce different penalties).
+        dropped = state.dropped_traffic + getattr(state, "edge_dropped_mb", 0.0)
+        drop_denom = max(cfg.drop_denominator_mbps, 1.0)
+        drop_norm = np.log1p(dropped / drop_denom)
 
-        hotspot = max(0.0, state.max_utilization - cfg.hotspot_threshold)
+        # 3. SPARSE PENALTY: FCT pressure (finish the flows)
+        edge_drops = getattr(state, "edge_dropped_flows", 0)
+        raw_flows = state.num_active_flows + edge_drops
+        flow_norm = min(raw_flows / max(cfg.max_expected_flows, 1.0), 2.0)
+
+        # 4. ANTI-LAZY: starvation (idle fabric with waiting backlog)
+        starvation = 0.0
+        avg_util = (
+            float(state.link_utilizations.mean())
+            if len(state.link_utilizations) > 0
+            else 0.0
+        )
+        has_backlog = (
+            hasattr(state, "leaf_backlog")
+            and len(state.leaf_backlog) > 0
+            and state.leaf_backlog.sum() > 0
+        )
+        if avg_util < 0.15 and state.num_active_flows > 0 and has_backlog:
+            starvation = 1.0
 
         reward = (
-            cfg.throughput_weight * throughput
-            + cfg.drop_weight * drop_ratio
-            + cfg.hotspot_weight * hotspot
+            cfg.goodput_weight * goodput_norm
+            + cfg.drop_weight * drop_norm
+            + cfg.flow_penalty_weight * flow_norm
+            + cfg.starvation_penalty * starvation
         )
-
-        if abs(cfg.fairness_weight) > 1e-12:
-            utils = state.link_utilizations
-            if len(utils) > 0 and utils.sum() > 1e-8:
-                n = len(utils)
-                fairness = float(
-                    utils.sum() ** 2 / (n * (utils ** 2).sum() + 1e-8)
-                )
-            else:
-                fairness = 1.0
-            reward += cfg.fairness_weight * fairness
 
         return reward
 

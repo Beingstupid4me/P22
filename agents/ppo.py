@@ -33,6 +33,7 @@ class PPOAgent(BaseAgent):
         self.model = model
         self.policy_type = policy_type
         self._policy = None  # GNN policy network
+        self._label = None   # Optional display name override
         self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # ── Inference ───────────────────────────────────────
@@ -362,7 +363,8 @@ class PPOAgent(BaseAgent):
         from .gnn_policy import GNNActorCriticPolicy
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        checkpoint = torch.load(path + ".pt", map_location=device, weights_only=True)
+        load_path = path if path.endswith(".pt") else path + ".pt"
+        checkpoint = torch.load(load_path, map_location=device, weights_only=True)
 
         num_leaves = checkpoint["num_leaves"]
         num_spines = checkpoint["num_spines"]
@@ -402,13 +404,18 @@ class PPOAgent(BaseAgent):
             if self._policy is None:
                 raise RuntimeError("No GNN policy to save.")
             Path(path).parent.mkdir(parents=True, exist_ok=True)
+            save_path = path if path.endswith(".pt") else path + ".pt"
             torch.save({
                 "policy_state_dict": self._policy.state_dict(),
                 "num_leaves": self.num_leaves,
                 "num_spines": self.num_spines,
                 "action_dim": self.action_dim,
-            }, path + ".pt")
+            }, save_path)
 
     @property
     def name(self) -> str:
-        return f"PPO-{self.policy_type.upper()}"
+        return self._label or f"PPO-{self.policy_type.upper()}"
+
+    @name.setter
+    def name(self, value: str):
+        self._label = value

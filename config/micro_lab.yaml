@@ -1,0 +1,91 @@
+# ============================================================
+# Micro-Lab: 4-Leaf × 2-Spine — fast RL training topology.
+#
+# Physics (400G links, 320G elephants) are IDENTICAL to production.
+# Only the network SIZE is shrunk for ~4× faster training.
+# A GNN trained here generalises to 16×4 (zero-shot transfer).
+# ============================================================
+
+topology:
+  num_leaves: 4
+  num_spines: 2
+  link_capacity_mbps: 400000.0       # 400 Gbps — same as production
+  propagation_delay_ms: 0.005        # 5 μs intra-DC
+  buffer_size_mb: 200.0              # Shallow buffers — same physics
+  edge_buffer_capacity_mb: 50000.0   # ~6.25 GB per leaf edge buffer
+
+traffic:
+  # Elephant flows (gradient sync)
+  elephant_flow_bandwidth_mbps: 320000.0
+  elephant_burst_size: 3               # 3 elephants competing for 2 spines → forced collision
+  elephant_burst_interval: 10
+  elephant_flow_duration: 20
+  elephant_data_mb: 75000.0
+  hosts_per_rack: 8
+
+  # Mice flows (control plane)
+  mice_flow_bandwidth_mbps: 1000.0
+  mice_flow_rate: 0.1
+  mice_flow_duration: 80
+
+  # Collective patterns (scaled for 4 leaves)
+  allreduce_probability: 0.30
+  alltoall_probability: 0.35
+  ring_probability: 0.35
+
+  bandwidth_variance: 0.05
+  min_burst_participants: 2            # Scaled for 4-leaf
+  max_burst_participants: 4            # Can't exceed num_leaves
+  subgroup_locality_probability: 0.75
+  subgroup_window: 4
+
+  intent_lookahead: 2
+
+tcp:
+  initial_cwnd_fraction: 0.1
+  ss_growth_factor: 2.0
+  ai_increment: 0.05
+  md_factor: 0.5
+  ecn_marking_threshold: 0.3
+  drop_threshold: 0.95
+  retransmit_penalty: 1.0
+  fast_recovery_exit: 0.7
+  min_rate_fraction: 0.01
+
+environment:
+  max_steps: 500
+  observation_history: 1
+  step_duration_seconds: 0.1
+  reward:
+    reference_capacity_mbps: 800000.0    # Achievable goodput, not total fabric BW
+    max_expected_flows: 20.0
+    drop_denominator_mbps: 5000.0        # Makes drop penalty visible
+    goodput_weight: 3.0
+    drop_weight: -5.0
+    flow_penalty_weight: 0.0             # Disabled: uncontrollable noise
+    starvation_penalty: 0.0              # Disabled: goodput already penalises
+
+training:
+  total_timesteps: 500000
+  policy_type: gnn
+  learning_rate: 0.0003               # Needs to learn dynamic spine weights
+  n_steps: 2048
+  batch_size: 128
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2                    # Standard PPO clip
+  ent_coef: 0.01                     # Encourage weight exploration
+  vf_coef: 1.0                      # Strong critic
+  max_grad_norm: 0.5
+  n_epochs: 4
+  target_kl: 0.02                    # Standard KL constraint
+
+  # GNN architecture
+  gcn_hidden: 64
+  gcn_layers: 2
+  features_dim: 128
+  log_std_init: -1.0
+
+benchmarking:
+  num_episodes: 30
+  seed: 42

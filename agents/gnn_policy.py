@@ -93,6 +93,9 @@ class GNNFeaturesExtractor(nn.Module):
         self._node_feat_size = self.num_nodes * node_feat_dim
         self._edge_feat_size = self.num_edges * edge_feat_dim
         self._intent_size = num_leaves * num_leaves
+        # Flat link-level features after intent: utils, queues, ecn, cap, up, split_ratios
+        num_links = 2 * num_leaves * num_spines
+        self._flat_link_dim = 5 * num_links + num_leaves * num_spines
 
         # ── GCN path ────────────────────────────────────
         self.input_proj = nn.Linear(node_feat_dim, gcn_hidden)
@@ -118,11 +121,21 @@ class GNNFeaturesExtractor(nn.Module):
             nn.ReLU(),
         )
 
+        # ── Flat link-level path (direct per-link features) ──
+        flat_link_hidden = 64
+        self.flat_link_encoder = nn.Sequential(
+            nn.Linear(self._flat_link_dim, flat_link_hidden),
+            nn.ReLU(),
+            nn.Linear(flat_link_hidden, flat_link_hidden),
+            nn.ReLU(),
+        )
+
         # ── Combiner ───────────────────────────────────
         # GCN dual pool: 2 × gcn_hidden
         # Edge dual pool: 2 × edge_hidden
         # Intent: intent_hidden
-        combined_dim = 2 * gcn_hidden + 2 * edge_hidden + intent_hidden
+        # Flat link: flat_link_hidden
+        combined_dim = 2 * gcn_hidden + 2 * edge_hidden + intent_hidden + flat_link_hidden
         self.combiner = nn.Sequential(
             nn.Linear(combined_dim, features_dim),
             nn.ReLU(),
@@ -168,9 +181,9 @@ class GNNFeaturesExtractor(nn.Module):
         off = 0
         node_flat   = observations[:, off:off + self._node_feat_size];  off += self._node_feat_size
         edge_flat   = observations[:, off:off + self._edge_feat_size];  off += self._edge_feat_size
-        intent_flat = observations[:, off:off + self._intent_size]
-        # Remaining (link_utils, queues, ecn, weights) are legacy flat
-        # features — already encoded in node/edge features above.
+        intent_flat = observations[:, off:off + self._intent_size];     off += self._intent_size
+        # Flat link features: per-link utils, queues, ecn, cap, up + split ratios
+        flat_link   = observations[:, off:off + self._flat_link_dim]
 
         # ── GCN path (batched) ──────────────────────────
         # Stack all nodes: (B × N, node_feat_dim)
@@ -210,8 +223,11 @@ class GNNFeaturesExtractor(nn.Module):
         # ── Intent path ─────────────────────────────────
         intent_emb = self.intent_encoder(intent_flat)            # (B, ih)
 
+        # ── Flat link path ──────────────────────────────
+        flat_link_emb = self.flat_link_encoder(flat_link)        # (B, flh)
+
         # ── Combine all paths ───────────────────────────
-        combined = torch.cat([graph_emb, edge_emb, intent_emb], dim=-1)
+        combined = torch.cat([graph_emb, edge_emb, intent_emb, flat_link_emb], dim=-1)
         return self.combiner(combined)
 
 
@@ -236,7 +252,7 @@ class GNNActorCriticPolicy(nn.Module):
         gcn_hidden: int = 64,
         gcn_layers: int = 2,
         features_dim: int = 128,
-        log_std_init: float = -1.0,
+        log_std_init: float = -1.5,
     ):
         super().__init__()
 
@@ -261,8 +277,17 @@ class GNNActorCriticPolicy(nn.Module):
             nn.Linear(features_dim // 2, action_dim),
             nn.Tanh(),                                           # → [-1, 1]
         )
-        # Small init → start near ECMP (all-zero actions)
-        _ortho_init(self.action_mean[-2], gain=0.01)
+        # Moderate init: spine outputs start near zero (ECMP), but
+        # gradients can flow to create meaningful weight shifts.
+        _ortho_init(self.action_mean[-2], gain=0.1)
+
+        # Warm-start admission: bias admission dimensions toward +1 (high admission).
+        # Action layout: [adm0, s0_0, s1_0, adm1, s0_1, s1_1, ...] per leaf.
+        # Admission indices: 0, 1+S, 2*(1+S), ...
+        stride = 1 + num_spines
+        admission_indices = list(range(0, num_leaves * stride, stride))
+        with torch.no_grad():
+            self.action_mean[-2].bias.data[admission_indices] = 2.0  # tanh(2) ≈ 0.96
 
         # ── Actor: state-dependent log_std ──────────────
         self.log_std_head = nn.Linear(features_dim, action_dim)
@@ -282,8 +307,8 @@ class GNNActorCriticPolicy(nn.Module):
         features = self.features_extractor(obs)
         action_mean = self.action_mean(features)
         log_std = torch.clamp(
-            self.log_std_head(features), min=-3.0, max=0.5
-        )
+            self.log_std_head(features), min=-3.0, max=-1.0
+        )  # std ∈ [0.05, 0.37] — calibrated for temp=5 softmax
         value = self.value_head(features)
         return action_mean, log_std, value
 
